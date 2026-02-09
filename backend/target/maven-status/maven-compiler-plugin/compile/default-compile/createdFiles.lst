@@ -1,6 +1,7 @@
 com\barberapp\modules\appointment\model\Slot.class
 com\barberapp\modules\appointment\repository\QueueRepository.class
 com\barberapp\modules\appointment\service\SlotService.class
+com\barberapp\config\CorsConfig.class
 com\barberapp\config\AsyncConfig.class
 com\barberapp\modules\appointment\controller\SlotController.class
 com\barberapp\BarberShopApplication.class

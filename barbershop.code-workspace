@@ -19,7 +19,8 @@
             "**/.git": true,
             "**/.DS_Store": true,
             "**/target": true
-        }
+        },
+        "java.compile.nullAnalysis.mode": "automatic"
     },
     "extensions": {
         "recommendations": [

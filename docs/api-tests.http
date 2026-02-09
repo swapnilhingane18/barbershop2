@@ -1,0 +1,34 @@
+@baseUrl = http://localhost:8080/api
+
+### 1. Get Queue for Barber 1
+GET {{baseUrl}}/queue?barberId=1
+
+### 2. Generate Slots for Barber 1
+POST {{baseUrl}}/slots/generate
+Content-Type: application/x-www-form-urlencoded
+
+barberId=1&start=2026-02-10T09:00:00&end=2026-02-10T17:00:00&duration=30
+
+### 3. Join Queue (Customer 101)
+POST {{baseUrl}}/queue/join
+Content-Type: application/x-www-form-urlencoded
+
+barberId=1&customerId=101
+
+### 4. Check Customer Position
+GET {{baseUrl}}/queue/position?barberId=1&customerId=101
+
+### 5. Join Queue (Customer 102)
+POST {{baseUrl}}/queue/join
+Content-Type: application/x-www-form-urlencoded
+
+barberId=1&customerId=102
+
+### 6. Complete Current Customer (Barber 1)
+POST {{baseUrl}}/queue/complete
+Content-Type: application/x-www-form-urlencoded
+
+barberId=1
+
+### 7. Get Available Slots
+GET {{baseUrl}}/slots?barberId=1&date=2026-02-10T09:00:00

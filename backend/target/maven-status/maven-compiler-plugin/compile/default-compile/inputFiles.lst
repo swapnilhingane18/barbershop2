@@ -9,6 +9,7 @@ C:\Users\swapnil\OneDrive\Desktop\barbershop2\backend\src\main\java\com\barberap
 C:\Users\swapnil\OneDrive\Desktop\barbershop2\backend\src\main\java\com\barberapp\config\AsyncConfig.java
 C:\Users\swapnil\OneDrive\Desktop\barbershop2\backend\src\main\java\com\barberapp\modules\appointment\repository\QueueRepository.java
 C:\Users\swapnil\OneDrive\Desktop\barbershop2\backend\src\main\java\com\barberapp\modules\appointment\service\SlotService.java
+C:\Users\swapnil\OneDrive\Desktop\barbershop2\backend\src\main\java\com\barberapp\config\CorsConfig.java
 C:\Users\swapnil\OneDrive\Desktop\barbershop2\backend\src\main\java\com\barberapp\config\WebSocketConfig.java
 C:\Users\swapnil\OneDrive\Desktop\barbershop2\backend\src\main\java\com\barberapp\modules\appointment\service\QueueNotifyService.java
 C:\Users\swapnil\OneDrive\Desktop\barbershop2\backend\src\main\java\com\barberapp\modules\appointment\model\Slot.java
