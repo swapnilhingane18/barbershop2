@@ -54,3 +54,50 @@ Emit WebSocket events when:
 - Do not change Phase 1 logic
 - Do not introduce frontend code
 - Follow existing package structure
+
+
+This plan transitions the system from a "pull-based" API to a "push-based" architecture using WebSockets (STOMP) to ensure clients see live queue updates without manual refreshes.
+
+1. Core Component Additions
+WebSocket Configuration: * Register a STOMP endpoint with SockJS fallback.
+
+Configure an internal Message Broker for topic-based broadcasting (e.g., /topic/queue).
+
+Domain Event Layer: * Introduce a QueueUpdatedEvent (POJO) to decouple business logic from notification logic.
+
+Event Publisher: * Integration of ApplicationEventPublisher within existing Service layers.
+
+Async Event Listener: * A dedicated @EventListener component that intercepts internal events and triggers the SimpMessagingTemplate.
+
+2. The Sync Workflow
+State Change: A CRUD operation (Join/Cancel/Complete) occurs in the QueueService.
+
+Internal Dispatch: The service publishes a QueueUpdatedEvent containing the Shop ID.
+
+Broadcast: The Listener catches the event and pushes the updated queue payload to the specific WebSocket topic: /topic/shop/{shopId}.
+
+3. Execution Roadmap
+Step 1: Infrastructure Setup
+Add spring-boot-starter-websocket dependency.
+
+Define WebSocketConfig to enable the simple broker and set allowed origins.
+
+Step 2: Event Definition
+Create QueueUpdatedEvent to carry the context (Shop ID, affected Customer ID, Action Type).
+
+Step 3: Service Instrumentation
+Inject ApplicationEventPublisher into QueueService.
+
+Update "Join Queue," "Cancel Slot," and "Next Customer" methods to publish the event after the MySQL transaction commits successfully.
+
+Step 4: Broadcast Implementation
+Create a QueueNotifyService (The Listener).
+
+Inject SimpMessagingTemplate.
+
+Implement a method to fetch the latest queue snapshot for the affected Shop and send it to the WebSocket destination.
+
+Step 5: Security & Concurrency (Final Polish)
+(Optional) Configure a ChannelInterceptor to validate JWTs on the initial WebSocket handshake.
+
+Ensure the Event Listener is marked as @Async to prevent notification overhead from blocking the main transaction thread.
