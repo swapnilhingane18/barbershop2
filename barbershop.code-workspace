@@ -1,0 +1,32 @@
+{
+    "folders": [
+        {
+            "path": ".",
+            "name": "Root"
+        },
+        {
+            "path": "backend",
+            "name": "Backend Application"
+        },
+        {
+            "path": "docs",
+            "name": "Documentation"
+        }
+    ],
+    "settings": {
+        "java.configuration.updateBuildConfiguration": "automatic",
+        "files.exclude": {
+            "**/.git": true,
+            "**/.DS_Store": true,
+            "**/target": true
+        }
+    },
+    "extensions": {
+        "recommendations": [
+            "vscjava.vscode-java-pack",
+            "vscjava.vscode-maven",
+            "vscjava.vscode-spring-boot-dashboard",
+            "vmware.vscode-boot-dev-pack"
+        ]
+    }
+}
