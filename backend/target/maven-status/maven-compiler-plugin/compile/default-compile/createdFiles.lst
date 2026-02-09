@@ -1,0 +1,15 @@
+com\barberapp\modules\appointment\model\Slot.class
+com\barberapp\modules\appointment\repository\QueueRepository.class
+com\barberapp\modules\appointment\service\SlotService.class
+com\barberapp\config\AsyncConfig.class
+com\barberapp\modules\appointment\controller\SlotController.class
+com\barberapp\BarberShopApplication.class
+com\barberapp\config\WebSocketConfig.class
+com\barberapp\modules\appointment\model\Slot$SlotStatus.class
+com\barberapp\modules\appointment\service\QueueService.class
+com\barberapp\modules\appointment\event\QueueUpdatedEvent.class
+com\barberapp\modules\appointment\model\QueueEntry.class
+com\barberapp\modules\appointment\controller\QueueController.class
+com\barberapp\modules\appointment\repository\SlotRepository.class
+com\barberapp\modules\appointment\model\QueueStatus.class
+com\barberapp\modules\appointment\service\QueueNotifyService.class
