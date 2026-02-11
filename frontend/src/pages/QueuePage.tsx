@@ -20,6 +20,7 @@ export const QueuePage = () => {
     const [queue, setQueue] = useState<QueueEntry[]>([]);
     const [position, setPosition] = useState<PositionResponse | null>(null);
     const [inQueue, setInQueue] = useState(false);
+    const [isJoining, setIsJoining] = useState(false);
 
     const queueApi = useApi<QueueEntry[]>();
     const positionApi = useApi<PositionResponse>();
@@ -76,13 +77,17 @@ export const QueuePage = () => {
 
         // Initial fetch
         fetchQueue();
-        checkPosition();
+        // Only check position if we know customer is in queue
+        if (inQueue) {
+            checkPosition();
+        }
 
         // Only use polling if WebSocket failed
         if (wsStatus === 'failed') {
             console.log('[Queue Page] WebSocket failed, using fallback polling');
             const interval = setInterval(() => {
                 fetchQueue();
+                // Only check position if customer is in queue
                 if (inQueue) {
                     checkPosition();
                 }
@@ -93,16 +98,36 @@ export const QueuePage = () => {
     }, [customer, barberId, inQueue, wsStatus, fetchQueue, checkPosition]);
 
     const handleJoinQueue = async () => {
-        if (!customer) return;
+        if (!customer || inQueue || isJoining) {
+            console.log('[Queue Page] Join blocked:', { inQueue, isJoining });
+            return;
+        }
 
-        const result = await joinApi.execute(() => joinQueue(barberId, customer.id));
-        if (result) {
-            toast.success('Successfully joined the queue!');
-            setInQueue(true);
-            fetchQueue();
-            checkPosition();
-        } else {
-            toast.error('Failed to join queue. Please try again.');
+        console.log('[Queue Page] Joining queue for customer:', customer.id);
+        setIsJoining(true);
+
+        try {
+            const result = await joinApi.execute(() => joinQueue(barberId, customer.id));
+            if (result) {
+                toast.success('Successfully joined the queue!');
+                setInQueue(true);
+                fetchQueue();
+                checkPosition();
+            } else {
+                toast.error('Failed to join queue. Please try again.');
+            }
+        } catch (error: any) {
+            // Ignore 400 if already in queue
+            if (error?.response?.status === 400) {
+                console.log('[Queue Page] Already in queue, ignoring error');
+                setInQueue(true);
+                fetchQueue();
+                checkPosition();
+            } else {
+                toast.error('Failed to join queue. Please try again.');
+            }
+        } finally {
+            setIsJoining(false);
         }
     };
 
@@ -136,10 +161,10 @@ export const QueuePage = () => {
                             <p className="text-gray-600">You are not in the queue yet.</p>
                             <Button
                                 onClick={handleJoinQueue}
-                                disabled={joinApi.loading}
+                                disabled={inQueue || isJoining || joinApi.loading}
                                 className="w-full sm:w-auto"
                             >
-                                {joinApi.loading ? 'Joining...' : 'Join Queue'}
+                                {isJoining || joinApi.loading ? 'Joining...' : 'Join Queue'}
                             </Button>
                         </div>
                     ) : (

@@ -3,7 +3,7 @@
  * Manages WebSocket connection using STOMP over SockJS
  */
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Client } from '@stomp/stompjs';
 import type { StompSubscription } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
@@ -37,8 +37,134 @@ export const useWebSocket = ({
     const clientRef = useRef<Client | null>(null);
     const subscriptionRef = useRef<StompSubscription | null>(null);
     const retryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const isConnectingRef = useRef(false);
+    const urlRef = useRef(url);
+    const topicRef = useRef(topic);
+    const onMessageRef = useRef(onMessage);
+    const maxRetriesRef = useRef(maxRetries);
+    const enabledRef = useRef(enabled);
 
-    const disconnect = useCallback(() => {
+    // Update refs when props change
+    urlRef.current = url;
+    topicRef.current = topic;
+    onMessageRef.current = onMessage;
+    maxRetriesRef.current = maxRetries;
+    enabledRef.current = enabled;
+
+    useEffect(() => {
+        if (!enabledRef.current || isConnectingRef.current) {
+            return;
+        }
+
+        isConnectingRef.current = true;
+
+        const connect = () => {
+            if (clientRef.current?.connected) {
+                return;
+            }
+
+            try {
+                const client = new Client({
+                    webSocketFactory: () => new SockJS(urlRef.current) as any,
+                    reconnectDelay: 0,
+                    heartbeatIncoming: 10000,
+                    heartbeatOutgoing: 10000,
+                    debug: (str) => {
+                        if (import.meta.env.DEV) {
+                            console.log('[WebSocket Debug]', str);
+                        }
+                    },
+                    onConnect: () => {
+                        console.log('[WebSocket] Connected');
+                        setStatus('connected');
+                        setRetryCount(0);
+
+                        if (client && client.connected) {
+                            subscriptionRef.current = client.subscribe(topicRef.current, (message) => {
+                                try {
+                                    const data = JSON.parse(message.body);
+                                    onMessageRef.current(data);
+                                } catch (error) {
+                                    console.error('[WebSocket] Failed to parse message:', error);
+                                }
+                            });
+                        }
+                    },
+                    onDisconnect: () => {
+                        console.log('[WebSocket] Disconnected');
+                        setStatus('disconnected');
+                    },
+                    onStompError: (frame) => {
+                        console.error('[WebSocket] STOMP error:', frame);
+                        handleReconnect();
+                    },
+                    onWebSocketError: (event) => {
+                        console.error('[WebSocket] WebSocket error:', event);
+                        handleReconnect();
+                    },
+                });
+
+                clientRef.current = client;
+                client.activate();
+            } catch (error) {
+                console.error('[WebSocket] Connection error:', error);
+                handleReconnect();
+            }
+        };
+
+        const handleReconnect = () => {
+            setRetryCount((prev) => {
+                const newCount = prev + 1;
+
+                if (newCount > maxRetriesRef.current) {
+                    console.error('[WebSocket] Max retries reached, giving up');
+                    setStatus('failed');
+                    return prev;
+                }
+
+                setStatus('reconnecting');
+
+                const delay = Math.min(1000 * Math.pow(2, prev), 16000);
+                console.log(`[WebSocket] Reconnecting in ${delay}ms (attempt ${newCount}/${maxRetriesRef.current})`);
+
+                retryTimeoutRef.current = setTimeout(() => {
+                    connect();
+                }, delay);
+
+                return newCount;
+            });
+        };
+
+        connect();
+
+        return () => {
+            isConnectingRef.current = false;
+
+            if (retryTimeoutRef.current) {
+                clearTimeout(retryTimeoutRef.current);
+                retryTimeoutRef.current = null;
+            }
+
+            if (subscriptionRef.current) {
+                subscriptionRef.current.unsubscribe();
+                subscriptionRef.current = null;
+            }
+
+            if (clientRef.current) {
+                clientRef.current.deactivate();
+                clientRef.current = null;
+            }
+
+            setStatus('disconnected');
+        };
+    }, []);
+
+    const disconnect = () => {
+        if (retryTimeoutRef.current) {
+            clearTimeout(retryTimeoutRef.current);
+            retryTimeoutRef.current = null;
+        }
+
         if (subscriptionRef.current) {
             subscriptionRef.current.unsubscribe();
             subscriptionRef.current = null;
@@ -49,102 +175,8 @@ export const useWebSocket = ({
             clientRef.current = null;
         }
 
-        if (retryTimeoutRef.current) {
-            clearTimeout(retryTimeoutRef.current);
-            retryTimeoutRef.current = null;
-        }
-
         setStatus('disconnected');
-    }, []);
-
-    const connect = useCallback(() => {
-        if (!enabled) {
-            return;
-        }
-
-        // Clean up existing connection
-        disconnect();
-
-        try {
-            // Create STOMP client with SockJS
-            const client = new Client({
-                webSocketFactory: () => new SockJS(url) as any,
-                reconnectDelay: 0, // We handle reconnection manually
-                heartbeatIncoming: 10000,
-                heartbeatOutgoing: 10000,
-                debug: (str) => {
-                    if (import.meta.env.DEV) {
-                        console.log('[WebSocket Debug]', str);
-                    }
-                },
-                onConnect: () => {
-                    console.log('[WebSocket] Connected');
-                    setStatus('connected');
-                    setRetryCount(0);
-
-                    // Subscribe to topic
-                    if (client && client.connected) {
-                        subscriptionRef.current = client.subscribe(topic, (message) => {
-                            try {
-                                const data = JSON.parse(message.body);
-                                onMessage(data);
-                            } catch (error) {
-                                console.error('[WebSocket] Failed to parse message:', error);
-                            }
-                        });
-                    }
-                },
-                onDisconnect: () => {
-                    console.log('[WebSocket] Disconnected');
-                    setStatus('disconnected');
-                },
-                onStompError: (frame) => {
-                    console.error('[WebSocket] STOMP error:', frame);
-                    handleReconnect();
-                },
-                onWebSocketError: (event) => {
-                    console.error('[WebSocket] WebSocket error:', event);
-                    handleReconnect();
-                },
-            });
-
-            clientRef.current = client;
-            client.activate();
-        } catch (error) {
-            console.error('[WebSocket] Connection error:', error);
-            handleReconnect();
-        }
-    }, [url, topic, onMessage, enabled, disconnect]);
-
-    const handleReconnect = useCallback(() => {
-        if (retryCount >= maxRetries) {
-            console.error('[WebSocket] Max retries reached, giving up');
-            setStatus('failed');
-            return;
-        }
-
-        setStatus('reconnecting');
-
-        // Exponential backoff: 1s, 2s, 4s, 8s, 16s
-        const delay = Math.min(1000 * Math.pow(2, retryCount), 16000);
-        console.log(`[WebSocket] Reconnecting in ${delay}ms (attempt ${retryCount + 1}/${maxRetries})`);
-
-        retryTimeoutRef.current = setTimeout(() => {
-            setRetryCount((prev) => prev + 1);
-            connect();
-        }, delay);
-    }, [retryCount, maxRetries, connect]);
-
-    // Initial connection
-    useEffect(() => {
-        if (enabled) {
-            connect();
-        }
-
-        return () => {
-            disconnect();
-        };
-    }, [enabled, connect, disconnect]);
+    };
 
     return {
         status,
